@@ -135,7 +135,7 @@ src/optical_flow_publisher.cpp
 src/optical_flow_subscriber.cpp
 )
 
-target_link_libraries(basalt_vio_node ${BASALT_LIBRARIES} ${TBB_LIBRARIES})
+target_link_libraries(basalt_vio_node basalt ${TBB_LIBRARIES})
 
 ament_auto_add_executable(basalt_vio_backend_node
 src/vio_backend_node.cpp
@@ -146,14 +146,14 @@ src/imu_publisher.cpp
 src/optical_flow_subscriber.cpp
 )
 
-target_link_libraries(basalt_vio_backend_node ${BASALT_LIBRARIES} ${TBB_LIBRARIES})
+target_link_libraries(basalt_vio_backend_node basalt ${TBB_LIBRARIES})
 
 ament_auto_add_executable(test_subscriber
 src/test_subscriber.cpp
 src/imu_subscriber.cpp
 )
 
-target_link_libraries(test_subscriber ${BASALT_LIBRARIES} ${TBB_LIBRARIES})
+target_link_libraries(test_subscriber basalt ${TBB_LIBRARIES})
 
 
 install(TARGETS
