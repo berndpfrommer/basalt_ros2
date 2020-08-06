@@ -21,7 +21,8 @@ namespace basalt_ros2 {
 class VIOFrontEnd {
  public:
   VIOFrontEnd(const std::shared_ptr<rclcpp::Node>& node,
-              const basalt::Calibration<double>& calib);
+              const basalt::Calibration<double>& calib,
+              const basalt::VioConfig& config);
 
   tbb::concurrent_bounded_queue<basalt::OpticalFlowResult::Ptr>**
   getOpticalFlowQueue() {
@@ -39,6 +40,7 @@ class VIOFrontEnd {
   std::shared_ptr<rclcpp::Node> node_;
   basalt::OpticalFlowBase::Ptr opticalFlow_;
   basalt::Calibration<double> calibration_;
+  basalt::VioConfig config_;
   std::shared_ptr<ImageSubscriber> imageSub_;
   std::shared_ptr<OpticalFlowPublisher> opticalFlowPub_;
   tbb::concurrent_bounded_queue<basalt::OpticalFlowResult::Ptr>*

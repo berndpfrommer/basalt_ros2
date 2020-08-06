@@ -35,8 +35,17 @@ Overlay your workspace:
 
 Launch the unified front/backend as a node:
 
-    ros2 launch basalt_ros2 vio.launch
+    ros2 launch basalt_ros2 basalt_vio.launch.py
 	
-Now you need supply data from the realsense T265
+Now you need supply data from the realsense T265.
 
-	
+# How to get the RealSense calibration
+
+To get the calibration file, do this:
+
+    ros2 run basalt_ros2 get_calibration  -o my_calib_file.json
+        
+If you want to overwrite the imu noise with your own idea of
+covariance:
+
+    ros2 run basalt_ros2 get_calibration  -o my_calib_file.json -a 0.5

@@ -4,6 +4,7 @@
 
 #include <basalt_ros2/vio_backend.h>
 #include <basalt_ros2/vio_frontend.h>
+#include <basalt_ros2/utils.h>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -13,26 +14,6 @@
 
 // needed for loading calibration via cereal
 #include <basalt/serialization/headers_serialization.h>
-
-static void load_calib(basalt::Calibration<double> *calib,
-                       const std::string &calib_path,
-                       const std::shared_ptr<rclcpp::Node> &node) {
-  if (calib_path.empty()) {
-    RCLCPP_ERROR(node->get_logger(), "no calib file specified!");
-    throw std::invalid_argument("no calibration file specified");
-  }
-  std::ifstream os(calib_path, std::ios::binary);
-  if (os.is_open()) {
-    cereal::JSONInputArchive archive(os);
-    archive(*calib);
-    RCLCPP_INFO_STREAM(node->get_logger(), "loaded calibration file with "
-                                               << calib->intrinsics.size()
-                                               << " cameras");
-  } else {
-    throw std::ios_base::failure("could not find calibration file: " +
-                                 calib_path);
-  }
-}
 
 #define SHORT_WIRE_BACK_AND_FRONT_END
 //#define TEST_DATA_DROPPING
@@ -53,13 +34,13 @@ int main(int argc, char *argv[]) {
   // load calibration
   //
   basalt::Calibration<double> calib;
-  const std::string calibFile =
-      frontEndNode->declare_parameter("calibration_file", "");
-  load_calib(&calib, calibFile, frontEndNode);
+  basalt::VioConfig vioConfig;
+  basalt_ros2::load_calib_and_config(frontEndNode, &calib, &vioConfig);
 
   // make actual front and back end objects
   const auto frontEnd =
-      std::make_shared<basalt_ros2::VIOFrontEnd>(frontEndNode, calib);
+    std::make_shared<basalt_ros2::VIOFrontEnd>(
+      frontEndNode, calib, vioConfig);
   std::vector<std::string> imu_topics = {"gyro", "accel"};
 #ifdef SHORT_WIRE_BACK_AND_FRONT_END
   // link front end to backend, by-passing the ROS messaging
@@ -71,7 +52,7 @@ int main(int argc, char *argv[]) {
   basalt_ros2::VIOBackEnd::OpticalFlowResultQueue **q = NULL;
 #endif
   const auto backEnd = std::make_shared<basalt_ros2::VIOBackEnd>(
-      backEndNode, calib, imu_topics, q);
+    backEndNode, calib, vioConfig, imu_topics, q);
 
   frontEnd->start();
   backEnd->start();

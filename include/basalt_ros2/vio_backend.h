@@ -29,6 +29,7 @@ class VIOBackEnd {
   typedef std::shared_ptr<OpticalFlowInputQueue> OpticalFlowInputQueuePtr;
   VIOBackEnd(const std::shared_ptr<rclcpp::Node>& node,
              const basalt::Calibration<double>& calib,
+             const basalt::VioConfig& config,
              const std::vector<std::string>& imu_topics,
              OpticalFlowResultQueue** opt_flow_queue);
 

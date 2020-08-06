@@ -59,38 +59,77 @@ VIOPublisher::VIOPublisher(const std::shared_ptr<rclcpp::Node> &node)
           0.00, 0.00, 0.00, 0.00, 0.00, 0.01, 0.00, 0.00, 0.00,
           0.00, 0.00, 0.00, 0.01, 0.00, 0.00, 0.00, 0.00, 0.00,
           0.00, 0.01, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.01};
+
+  node_->get_parameter_or<std::string>("world_frame_id",
+                                       msg_.header.frame_id, "world");
+  node_->get_parameter_or<std::string>("odom_frame_id",
+                                       msg_.child_frame_id, "odom");
+
+  std::vector<double> ext_trans = {0, 0, 0};
+  std::vector<double> ext_q = {1.0, 0, 0, 0};
+
+  if (!node_->has_parameter("extra_translation")) {
+    ext_trans = node_->declare_parameter("extra_translation", ext_trans);
+  }
+  if (node_->get_parameter<std::vector<double>>(
+        "extra_translation", ext_trans)) {
+    if (ext_trans.size() != 3) {
+      RCLCPP_ERROR(node->get_logger(),
+                   "extra_translation must have 3 elements!");
+      throw std::invalid_argument("extra translation must have 3 elements");
+    }
+  }
+  // rotation is given in format (w, x, y, z)
+  if (!node_->has_parameter("extra_rotation")) {
+    ext_q = node_->declare_parameter("extra_rotation", ext_q);
+  }
+  if (node_->get_parameter<std::vector<double>>("extra_rotation", ext_q)) {
+    if (ext_q.size() != 4) {
+      RCLCPP_ERROR(node->get_logger(),
+                   "extra_rotation must have 4 elements!");
+      throw std::invalid_argument("extra rotation must have 4 elements");
+    }
+  }
+
+  T_extra_ = Eigen::Vector3d(ext_trans[0], ext_trans[1], ext_trans[2]);
+  q_extra_ = Eigen::Quaterniond(ext_q[0], ext_q[1], ext_q[2], ext_q[3]);
+  extraTF_ = T_extra_.norm() > 0.001 || q_extra_.w() < 0.99999;
+  if (extraTF_) {
+    RCLCPP_INFO_STREAM(node->get_logger(), "extra transform: q=" <<
+                       q_extra_.coeffs().transpose() << ", T=" << T_extra_.transpose());
+  } else {
+    RCLCPP_INFO(node->get_logger(), "no extra transform specified");
+  }
 }
 
 void VIOPublisher::publish(const basalt::PoseVelBiasState::Ptr &data) {
-  const Eigen::Vector3d T = data->T_w_i.translation();
-  const Eigen::Quaterniond q = data->T_w_i.unit_quaternion();
+  const Eigen::Vector3d T_orig = data->T_w_i.translation();
+  const Eigen::Quaterniond q_orig = data->T_w_i.unit_quaternion();
   const Eigen::Vector3d ang_vel = data->vel_w_i;
+  const Eigen::Vector3d T = extraTF_ ? (q_extra_ * T_orig + T_extra_) : T_orig;
+  const Eigen::Quaterniond q = extraTF_ ? (q_extra_ * q_orig) : q_orig;
 
   // make odometry message
-  nav_msgs::msg::Odometry msg;
-  msg.header.frame_id = "world";
-  msg.child_frame_id = "body";
+  msg_.header.stamp.sec = data->t_ns / 1000000000LL;
+  msg_.header.stamp.nanosec = data->t_ns % 1000000000LL;
 
-  msg.header.stamp.sec = data->t_ns / 1000000000LL;
-  msg.header.stamp.nanosec = data->t_ns % 1000000000LL;
+  msg_.pose.pose.position = to_ros_point(T);
+  msg_.pose.pose.orientation = to_ros_quat(q);
 
-  msg.pose.pose.position = to_ros_point(T);
-  msg.pose.pose.orientation = to_ros_quat(q);
+  msg_.pose.covariance = cov_;
+  msg_.twist.twist.linear = to_ros_vec(ang_vel);
+  msg_.twist.covariance = cov_;  // zero matrix
 
-  msg.pose.covariance = cov_;
-  msg.twist.twist.linear = to_ros_vec(ang_vel);
-  msg.twist.covariance = cov_;  // zero matrix
-
-  pub_->publish(msg);
+  pub_->publish(msg_);
 #if 0
-  std::cout << "position: " << msg.pose.pose.position.x << " "
-            << msg.pose.pose.position.y << " " << msg.pose.pose.position.z
+  std::cout << "position: " << msg_.pose.pose.position.x << " "
+            << msg_.pose.pose.position.y << " " << msg_.pose.pose.position.z
             << std::endl;
 #endif
   // make transform message
-  const rclcpp::Time t(msg.header.stamp.sec, msg.header.stamp.nanosec);
+  const rclcpp::Time t(msg_.header.stamp.sec, msg_.header.stamp.nanosec);
   const geometry_msgs::msg::TransformStamped tf =
-      to_tf_msg(t, q, T, msg.header.frame_id, msg.child_frame_id);
+      to_tf_msg(t, q, T, msg_.header.frame_id, msg_.child_frame_id);
 
   tfBroadCaster_->sendTransform(tf);
 }

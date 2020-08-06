@@ -11,19 +11,17 @@
 
 namespace basalt_ros2 {
 VIOFrontEnd::VIOFrontEnd(const std::shared_ptr<rclcpp::Node>& node,
-                         const basalt::Calibration<double>& calib)
-    : node_(node), calibration_(calib) {}
+                         const basalt::Calibration<double>& calib,
+                         const basalt::VioConfig& config)
+  : node_(node), calibration_(calib), config_(config) {}
 
 void VIOFrontEnd::start() {
-  basalt::VioConfig vio_config;
-
-  vio_config.optical_flow_skip_frames = 1;
   imageSub_ =
       std::make_shared<ImageSubscriber>(node_, "left_image", "right_image");
 
   // create optical flow
   opticalFlow_ =
-      basalt::OpticalFlowFactory::getOpticalFlow(vio_config, calibration_);
+      basalt::OpticalFlowFactory::getOpticalFlow(config_, calibration_);
 
   // connect image sub output queue to optical flow input queue
   imageSub_->setQueue(&(opticalFlow_->input_queue));

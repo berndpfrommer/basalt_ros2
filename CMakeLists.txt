@@ -70,6 +70,7 @@ find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(basalt_vio_ros2_msgs REQUIRED)
 find_package(TBB REQUIRED)
+find_package(realsense2 QUIET)
 find_package(OpenCV REQUIRED core imgproc calib3d highgui)
 find_package(Basalt CONFIG REQUIRED)
 
@@ -131,6 +132,7 @@ src/vio_publisher.cpp
 src/image_subscriber.cpp
 src/imu_subscriber.cpp
 src/imu_publisher.cpp
+src/utils.cpp
 src/optical_flow_publisher.cpp
 src/optical_flow_subscriber.cpp
 )
@@ -143,6 +145,7 @@ src/vio_backend.cpp
 src/vio_publisher.cpp
 src/imu_subscriber.cpp
 src/imu_publisher.cpp
+src/utils.cpp
 src/optical_flow_subscriber.cpp
 )
 
@@ -155,6 +158,14 @@ src/imu_subscriber.cpp
 
 target_link_libraries(test_subscriber basalt ${TBB_LIBRARIES})
 
+# --- realsense tools ---
+if(realsense2_FOUND)
+  add_executable(get_calibration src/get_calibration.cpp)
+  target_link_libraries(get_calibration basalt basalt_rs_t265
+                        ${TBB_LIBRARIES})
+  install(TARGETS get_calibration
+          DESTINATION lib/${PROJECT_NAME})
+endif()
 
 install(TARGETS
     basalt_vio_node
@@ -168,6 +179,7 @@ install(DIRECTORY
     DESTINATION share/${PROJECT_NAME}
 )
 
+install(DIRECTORY config)
 
 ament_package()
 
