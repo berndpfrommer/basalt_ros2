@@ -21,7 +21,12 @@ Only tested on Ubuntu 18.04LTS with ROS2 Eloquent
 
 # Building
 
-At the root of the workspace, do:
+This package depends on the Basalt VIO package, which *must be
+installed first* by following the [instructions for the basalt_ros repository](https://github.com/berndpfrommer/basalt_ros). 
+Failing to do so will give you an error about a missing ``basaltConfig.cmake``.
+If you don't like the ROS1 packages that come with the ``basalt_ros`` repo
+remove them afterwards, then build by doing this at the root of your workspace:
+
 
     cd path_to_top_of_your_workspace
 	colcon build --symlink-install --cmake-args	-DCMAKE_BUILD_TYPE=Release
